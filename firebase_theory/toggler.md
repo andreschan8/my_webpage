@@ -16,6 +16,7 @@ We'll use this HTML template. Create three documents: `toggler.html`, `toggler.c
   </body>
 </html>
 ```
+## (2) Toggling functionality
 Now create a parent `<div>` element and two sibling ones. The parent has a class attribute called `rectangle`; the first child should have the class `region` and the second child should have the class list `buttons region`. Also, include two `<p>` elements inside the first `<div>` and a button in the other one. Write your sample sentence in the first `<p>` element and leave the second one empty, but include an ID for this one, such as `toggled-id`. This `<p>` element will be the toggling target and we leave it empty since the JS code will write a placeholder in it when the page loads. Finally, add the `onclick` attribute to the button. Call the function `toggleVisibility()` and pass in the ID of the English sentence `<p>` element.
 ```html
 <div class="rectangle">
