@@ -353,6 +353,339 @@ function goToStructGuess(doc) {
 ```
 This function adds the English and Spanish sentences to a new document in the `userLogs` collection and redirects the user to the Structure Guesser page (i.e. the `theory.html` file).
 
+Now we have to retrieve the user log from the firestore database immediately after the Structure Guesser page loads. In order to do this we have to include the `<script>` snippets in the head of the `theory.html` file and the `config.js` in the body.
+```javascript
+//Before the link tag
+<script  src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>  
+<script  src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+```
+```javascript
+<script src="config.js"></script>  //Before the theory.js script tag
+```
+Now, in the `theory.js` file, include this block of code at the very top.
+```javascript
+let dummyID = 'dummy-id';
+
+window.onload = function () {
+	db.collection('userLogs').where(firebase.firestore.FieldPath.documentId(),'!=',dummyID).get().then((snapshot)=>{
+        snapshot.docs.forEach(doc=>{
+            let enSen = document.querySelector('#englishText');
+	    let esSen = document.querySelector('#spanishText');
+            enSen.textContent = doc.data().english;
+	    esSen.textContent = doc.data().spanish;
+            let logID = doc.id;
+            db.collection('userLogs').doc(logID).delete();
+        });
+    });
+};
+```
+This function comes from the `about.js` file, and inserts the English and Spanish sentences in the textareas with IDs `'englishText'` and `'spanishText'`. Of course, after it has inserted the sentences, it deletes the user log in the firestore collection.
+
+This finally completes the basic functionality of the Structure Guesser web app. The following docs will discuss further improvements.
+
+## (3) Checkpoint files (v1.0)
+
+The files of the first functioning version are divided into the `theory` and `data3` files. For the `theory` files:
+HTML:
+```html
+<!DOCTYPE  html>
+<html>
+	<head>
+		<script  src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>  
+        <script  src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+		<link  href="theory.css"  rel="stylesheet"  />
+	</head>
+	<body>
+		Enter the original English text:<br>
+		<textarea  id="englishText"></textarea><br>
+		<button  type="button"  id="englishButton" onclick=printStructure()>Done</button><br>
+		Enter the translated Spanish text:<br>
+		<textarea  id="spanishText"></textarea><br>
+		<button  type="button"  id="spanishButton"  onclick="printSpanish()">Done</button>
+        <button type="button" onclick="goToSenMan()">Go to Sentence Manager</button><br>
+		<p  id="spanishLegend"></p>
+		<p  id="englishStructure"></p>
+		<!--Our files share the name 'theory'-->
+		<script src="config.js"></script>
+		<script  src="theory.js"></script>
+	</body>
+</html>
+```
+JS:
+```javascript
+let dummyID = 'dummy-id';
+
+window.onload = function () {
+	db.collection('userLogs').where(firebase.firestore.FieldPath.documentId(),'!=',dummyID).get().then((snapshot)=>{
+        snapshot.docs.forEach(doc=>{
+            let enSen = document.querySelector('#englishText');
+			let esSen = document.querySelector('#spanishText');
+            enSen.textContent = doc.data().english;
+			esSen.textContent = doc.data().spanish;
+            let logID = doc.id;
+            db.collection('userLogs').doc(logID).delete();
+        });
+    });
+};
+
+function goToSenMan() {
+    window.location.href = 'data3.html';
+};
+
+function printSpanish() {
+	document.getElementById("spanishLegend").innerHTML = ""
+	var text = document.getElementById("spanishText").value
+	document.getElementById("spanishLegend").innerHTML = text
+}
+
+function printStructure() {
+	var text = document.getElementById("englishText").value
+	document.getElementById("englishStructure").innerHTML = ""
+	if (text == "") {
+		var errorString = "You have entered no English text"
+		document.getElementById("englishStructure").innerHTML = errorString
+	}
+	else {
+		words = text.split(" ")
+		word_array = words.slice(0)
+		for (var i = 0; i<words.length; i++) {
+			var input = document.createElement("input")
+			input.type = "text"
+			input.size = words[i].length
+			input.className = "indivBox"
+            input.autocapitalize = "none"
+			document.getElementById("englishStructure").appendChild(input)
+		}
+	}
+	textboxManager()
+}
+
+function textboxManager() {
+	const textboxes = document.querySelectorAll(".indivBox")
+	textboxes.forEach((textbox, index) => {
+		let  lastValue  =  textbox.value;
+		textbox.addEventListener('keydown', (event) => {
+			if (event.key  ===  'Backspace'  &&  textbox.selectionStart  ===  0) {
+				const  previousTextbox  =  textboxes[index  -  1];
+				if (previousTextbox) {
+					if (!(event.repeat)){
+						event.preventDefault();
+					}
+					previousTextbox.focus();
+					previousTextbox.selectionStart  =  previousTextbox.value.length;
+				}
+			}
+		})
+		textbox.addEventListener('input', (event) => {
+			if (textbox.value === words[index]) {
+				textbox.classList.add("right")
+		
+				const nextTextbox = textboxes[index + 1]
+				if (nextTextbox) {
+					nextTextbox.focus()
+				}
+			}
+			else {
+				textbox.classList.remove("right")
+			}
+			if (textbox.value !== lastValue + ' ' && textbox.value !== lastValue.slice(0, -1)) {
+				lastValue = textbox.value;
+				return;
+			}
+	
+			if (textbox.value === lastValue + ' ') {
+				textbox.value = lastValue.trim();
+				const nextTextbox = textboxes[index + 1];
+				if (nextTextbox) {
+					nextTextbox.focus();
+				}
+			}
+			lastValue = textbox.value;
+		});
+	
+		textbox.addEventListener('keydown', (event) => {
+			if (event.key  ===  ' '  &&  textbox.selectionStart  !==  textbox.value.length) {
+				event.preventDefault();
+			}
+		});
+	})
+}
+
+let word_array
+```
+CSS:
+```css
+.indivBox {
+	text-align: center
+}
+
+input.right {
+	border: 2px  solid  rgb(33, 254, 85)
+}
+```
+For the `data3` files:
+HTML:
+```html
+<!DOCTYPE html>
+<html>
+	<head>
+        <script  src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>  
+        <script  src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+		<link href="data3.css" rel="stylesheet">
+	</head>
+	<body>
+        <form id="entry-id">
+            <textarea id="en-id" name="enName" placeholder="Enter your English sentence"></textarea>
+            <textarea id="es-id" name="esName" placeholder="Enter your Spanish sentence"></textarea>
+            <button>Add sentence pair</button>
+        </form>
+        <div id="table-id">
+        </div>
+		<script src="config.js"></script>
+		<script src="data3.js"></script>
+	</body>
+</html>
+```
+JS:
+```javascript
+const table = document.querySelector('#table-id')
+
+placeholder = "*****************"
+
+function goToStructGuess(doc) {
+    db.collection('userLogs').add({
+        english: doc.data().english,
+        spanish: doc.data().spanish
+    })
+    .then(function() {
+        window.location.href = 'theory.html';
+    })
+    .catch(function(error) {
+        console.error("Error writing to Firestore: ", error);
+    });
+};
+
+function toggleVisibility(rectangle, doc) {
+    var x = rectangle.children[0].children[1];
+    if (x.textContent === placeholder) {
+      x.textContent = doc.data().english;
+    } else {
+      x.textContent = placeholder;
+    }
+}
+
+function renderPairs(doc) {
+
+	let rectangle = document.createElement('div');
+	let div1 = document.createElement('div');
+	let div2 = document.createElement('div');
+	let pEs = document.createElement('p');
+	let pEn = document.createElement('p');
+	let toggleButton = document.createElement('button');
+	let chooseButton = document.createElement('button');
+	let deleteButton = document.createElement('button');
+
+	rectangle.classList.add("rectangle");
+	div1.classList.add("region");
+	div2.classList.add("region");
+	div2.classList.add("button");
+
+	pEs.textContent = doc.data().spanish;
+	pEn.textContent = placeholder;
+	toggleButton.textContent = 'Hide English sentence';
+	chooseButton.textContent = 'Choose sentence pair';
+	deleteButton.textContent = 'Delete sentence pair';
+
+	rectangle.appendChild(div1);
+	rectangle.appendChild(div2);
+	div1.appendChild(pEs);
+	div1.appendChild(pEn);
+	div2.appendChild(toggleButton);
+	div2.appendChild(chooseButton);
+	div2.appendChild(deleteButton);
+
+	rectangle.setAttribute('data-id',doc.id);
+	toggleButton.setAttribute('type','button');
+	toggleButton.addEventListener('click', function() {
+		toggleVisibility(rectangle, doc);
+	});
+    chooseButton.addEventListener('click', function() {
+        goToStructGuess(doc);
+    });
+
+	table.appendChild(rectangle);
+	//Deleting functionality, after the table.appendChild(rectangle) line
+	deleteButton.addEventListener('click', (e) => {
+	e.stopPropagation();
+	let id = e.target.parentElement.parentElement.getAttribute('data-id');
+	//I think the following line adds the 'removed' status
+	db.collection('sentencePairs').doc(id).delete();
+	});
+}
+
+form = document.querySelector('#entry-id')
+// Add sentence pair
+form.addEventListener('submit', (e) => {
+	e.preventDefault();
+	db.collection('sentencePairs').add({
+		english: form.enName.value,
+		spanish: form.esName.value
+	});
+});
+
+db.collection('sentencePairs').orderBy('english').onSnapshot(snapshot => {
+	let changes = snapshot.docChanges(); //Track any changes
+	changes.forEach(change => {
+		if (change.type == 'added') {
+			renderPairs(change.doc);
+		} else if (change.type == 'removed') {
+			let rectangle = document.querySelector('[data-id=\"' + change.doc.id + '\"]')
+			table.removeChild(rectangle)
+		}
+	});
+});
+```
+CSS:
+```css
+.rectangle {
+    display: flex;
+    justify-content: space-between;
+    border: 1px solid black;
+    margin-bottom: 10px;
+    padding: 10px;
+  }
+  
+  .region {
+    flex: 1;
+    margin-right: 10px;
+  }
+  
+  .region p {
+    margin-bottom: 10px;
+  }
+  
+  .button {
+    display: flex;
+    justify-content: space-between;
+  }
+```
+Finally, for the `config.js` file:
+```javascript
+const firebaseConfig = {
+    apiKey: "AIzaSyAuCMK3DsjYAbsycXam3PzcWSJdL33dTW4",
+    authDomain: "guessstructure.firebaseapp.com",
+    projectId: "guessstructure",
+    storageBucket: "guessstructure.appspot.com",
+    messagingSenderId: "1087487664626",
+    appId: "1:1087487664626:web:049799ace8fc2f86880b6b",
+    measurementId: "G-VMHN2FHF61"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.firestore();
+db.settings({ timestampsInSnapshots: true, merge: true });
+```
 
 
 
